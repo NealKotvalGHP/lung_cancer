@@ -1,60 +1,40 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score
-from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
 
+# Read the CSV file into a DataFrame
+df = pd.read_csv('lung_cancer.csv')
 
-# Load the dataset
-data = pd.read_csv('lung_cancer.csv')
+# One-hot encode the gender column
+df_encoded = pd.get_dummies(df, columns=['gender'])
 
-gender_encoded = pd.get_dummies(data['GENDER'], prefix='GENDER')
-
-# Drop the original 'GENDER' column from the data
-data = data.drop('GENDER', axis=1)
-
-# Concatenate the encoded gender columns to the data
-data = pd.concat([data, gender_encoded], axis=1)
-
-# Separate the features (X) from the target variable (y)
-X = data.drop('LUNG_CANCER', axis=1)
-y = data['LUNG_CANCER']
+# Split the data into input (X) and output (y) variables
+X = df_encoded.drop('column_name', axis=1)  # Replace 'column_name' with the appropriate output column name
+y = df_encoded['column_name']  # Replace 'column_name' with the appropriate output column name
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize and train the decision tree model
-decision_tree = DecisionTreeClassifier()
-decision_tree.fit(X_train, y_train)
-
-# Evaluate the decision tree model
-y_pred_tree = decision_tree.predict(X_test)
-accuracy_tree = accuracy_score(y_test, y_pred_tree)
-print("Decision Tree Accuracy:", accuracy_tree)
-
-# Convert decision tree to a neural network
-model = keras.models.Sequential([
-    keras.layers.Dense(16, activation='relu', input_shape=(2,)),
-    keras.layers.Dense(32, activation='relu'),
-    keras.layers.Dense(32, activation='relu'),
-    keras.layers.Dense(1, activation='sigmoid')
-])
-
-# Compile the model
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
-# Normalize the features
+# Scale the input variables
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
+# Build the deep neural network model
+model = Sequential()
+model.add(Dense(64, activation='relu', input_dim=X_train_scaled.shape[1]))
+model.add(Dense(64, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+# Compile the model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
 # Train the model
-model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=0)
+model.fit(X_train_scaled, y_train, epochs=10, batch_size=32, verbose=1)
 
-# Evaluate the model
-_, accuracy_nn = model.evaluate(X_test_scaled, y_test)
-print("Neural Network Accuracy:", accuracy_nn)
-
-# Make predictions using the neural network
-y_pred_nn = model.predict_classes(X_test_scaled)
+# Evaluate the model on the test set
+loss, accuracy = model.evaluate(X_test_scaled, y_test)
+print(f'Test Loss: {loss:.4f}')
+print(f'Test Accuracy: {accuracy:.4f}')
